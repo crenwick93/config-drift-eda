@@ -114,22 +114,26 @@ Without this, Splunk Cloud will refuse to fire webhooks to your EDA listener.
 #### 3c. Create the saved search alert
 
 1. Navigate to **Settings → Searches, reports, and alerts → New Alert**.
-2. Paste the SPL from `splunk/saved_search.spl`:
+2. Fill in the fields as shown below:
 
-```spl
-index=linux sourcetype=linux:audit key=ssh_config_change type=PATH nametype=NORMAL
-| stats latest(_time) as event_time, values(host) as host,
-        values(auid) as triggering_user by key
-| eval host=mvindex(host,0)
-```
+   - **Title:** `Config Drift Detected`
+   - **Description:** `Fires when auditd detects a write to any monitored configuration file`
+   - **Search:**
+     ```spl
+     index=main sourcetype=linux:audit type=SYSCALL key=config_drift
+     | dedup host
+     | rename key as drift_key
+     | table _time, host, auid, drift_key, name
+     ```
+   - **Alert type:** Scheduled → **Run on Cron Schedule** → `* * * * *`
+   - **Time Range:** **Last 1 minute** (Earliest: `-1m@m`, Latest: `now`). Do **not** use "All time" — otherwise the alert re-fires on the same event every minute and creates an event storm.
+   - **Trigger alert when:** Number of Results is greater than 0
+   - **Trigger:** For each result
+   - **Trigger Actions:** Webhook (leave URL blank for now — set it after AAP `cac-apply.sh` creates the Event Stream)
 
-3. Configure:
-   - **Alert type:** Real-time
-   - **Trigger condition:** Number of results > 0
-   - **Throttle:** 5 minutes, group by `host`
-   - **Alert action:** Webhook
-   - **Webhook URL:** `https://<aap-eda-host>/endpoint`
-4. Save.
+![Splunk Alert Configuration](docs/images/splunk-alert-config.png)
+
+3. Save.
 
 #### 3d. Create a `linux` index (if not using `main`)
 

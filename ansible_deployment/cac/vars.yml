@@ -223,14 +223,8 @@ controller_workflows:
           type: job_template
 
 # -----------------------------------------------------------------------------
-# EDA — Decision Environment, Project, Credentials, Rulebook Activation
+# EDA — Project, Credentials, Event Stream, Activation
 # -----------------------------------------------------------------------------
-eda_decision_environments:
-  - name: "Default Decision Environment"
-    description: "Stock AAP 2.6 DE — webhook source is built in"
-    organization: "config-drift-demo"
-    image_url: "{{ webhook_de_image }}"
-
 eda_projects:
   - name: "Config Drift Event Rules"
     description: "EDA rulebooks for config drift detection and remediation dispatch"
@@ -251,13 +245,35 @@ eda_credentials:
       oauth_token: "{{ aap_token }}"
       verify_ssl: "{{ aap_validate_certs }}"
 
+  - name: "Splunk Webhook Token"
+    description: "Token credential for authenticating Splunk Cloud webhook delivery"
+    organization: "config-drift-demo"
+    credential_type: "Token"
+    inputs:
+      token: "{{ splunk_webhook_token | default('changeme') }}"
+      http_header_key: "Authorization"
+
+# Event Stream — managed webhook endpoint that Splunk posts to.
+# EDA generates a URL after creation; configure that URL as the
+# Splunk webhook alert action target.
+eda_event_streams:
+  - name: "Splunk Config Drift Alerts"
+    description: "Receives Splunk saved search webhook alerts for config drift events"
+    organization: "config-drift-demo"
+    event_stream_type: "Token"
+    credential: "Splunk Webhook Token"
+    forward_events: true
+
 eda_rulebook_activations:
   - name: "Config Drift Remediation Listener"
-    description: "Webhook on :5001 — receives Splunk alerts for SSH/sudoers drift and dispatches remediation"
+    description: "Receives config drift events via Event Stream and dispatches remediation workflow"
     organization: "config-drift-demo"
     project: "Config Drift Event Rules"
     rulebook: "eda/rulebooks/config_drift.yml"
     decision_environment: "Default Decision Environment"
     eda_credentials:
       - "AAP Controller"
+    event_streams:
+      - source_name: "__SOURCE_1"
+        event_stream: "Splunk Config Drift Alerts"
     enabled: true

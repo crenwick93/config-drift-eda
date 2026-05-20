@@ -31,14 +31,14 @@
     splunk_hec_url: "{{ lookup('env', 'SPLUNK_HEC_URL') | default('', true) }}"
     splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') | default('', true) }}"
 
-    # Decision environment image (stock AAP 2.6 DE — webhook source is built in)
-    webhook_de_image: "{{ lookup('env', 'WEBHOOK_DE_IMAGE') | default('registry.redhat.io/ansible-automation-platform-26/de-minimal-rhel9:latest', true) }}"
-
     # ServiceNow PDI
     sn_instance: "{{ lookup('env', 'SERVICENOW_INSTANCE_URL') | default(omit, true) }}"
     sn_username: "{{ lookup('env', 'SERVICENOW_USERNAME') | default(omit, true) }}"
     sn_password: "{{ lookup('env', 'SERVICENOW_PASSWORD') | default(omit, true) }}"
     sn_caller_name: "{{ lookup('env', 'SERVICENOW_CALLER_NAME') | default('Ansible Automation', true) }}"
+
+    # Event Stream webhook token (Splunk sends this to authenticate to EDA)
+    splunk_webhook_token: "{{ lookup('env', 'SPLUNK_WEBHOOK_TOKEN') | default('changeme', true) }}"
 
     # Managed node hosts — override via extra_vars or .env JSON
     managed_node_hosts: "{{ (lookup('env', 'MANAGED_NODE_HOSTS') | default('[]', true)) | from_json | default(default_managed_node_hosts, true) }}"
