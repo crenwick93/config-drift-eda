@@ -6,10 +6,10 @@
         host: 0.0.0.0
         port: 5001
   rules:
-    - name: SSH config drift detected
+    - name: Config drift detected
       condition: >-
-        event.payload.result.name is defined and
-        "sshd_config" in event.payload.result.name
+        event.payload.result.drift_key is defined and
+        "config_drift" in event.payload.result.drift_key
       throttle:
         once_within: 2 minutes
         group_by_attributes:
@@ -26,4 +26,3 @@
               splunk_sid: "{{ event.payload.sid | default('') }}"
               splunk_results_link: "{{ event.payload.results_link | default('') }}"
               remediated_host: "{{ event.payload.result.host }}"
-              remediated_file: "/etc/ssh/sshd_config"
