@@ -14,17 +14,8 @@
             state: new
             other:
               caller_id: "{{ sn_caller_name | default('Ansible Automation') }}"
-            short_description: >-
-              Config drift detected on {{ remediated_host | default('unknown') }}
-            description: >
-              Config drift detected and auto-remediation initiated by AAP.
-
-              Host: {{ remediated_host | default('unknown') }}
-              Drift key: {{ drift_key | default('manual') }}
-              Triggered by (auid): {{ triggering_user | default('unknown') }}
-              Splunk search: {{ splunk_results_link | default('n/a') }}
-
-              Remediation is in progress.
+            short_description: "Config drift detected on {{ remediated_host | default('unknown') }}"
+            description: "Configuration drift detected — auto-remediation initiated by Ansible Automation Platform.\n\nHost:         {{ remediated_host | default('unknown') }}\nDrift key:    {{ drift_key | default('manual') }}\nTriggered by: auid {{ triggering_user | default('unknown') }}\nSplunk SID:   {{ splunk_sid | default('n/a') }}\n\nRemediation is in progress. This incident will be auto-resolved on completion."
             impact: low
             urgency: low
           register: snow_result
@@ -48,13 +39,7 @@
             sys_id: "{{ snow_sys_id }}"
             state: resolved
             close_code: "Solution provided"
-            close_notes: >
-              Auto-remediated by AAP.
-
-              Host: {{ remediated_host | default('unknown') }}
-              AAP Job ID: {{ awx_job_id | default('local') }}
-
-              Desired state restored from Git baseline.
+            close_notes: "Auto-remediated by Ansible Automation Platform.\n\nHost:       {{ remediated_host | default('unknown') }}\nAAP Job ID: {{ awx_job_id | default('local') }}\n\nDesired configuration state restored from Git baseline."
 
         - name: Show resolution
           ansible.builtin.debug:
