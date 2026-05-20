@@ -5,4 +5,4 @@
 [monitor:///var/log/audit/audit.log]
 disabled = false
 sourcetype = linux:audit
-index = linux
+index = main

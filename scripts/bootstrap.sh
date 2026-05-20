@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Apply AAP Controller + EDA objects for the config-drift demo.
+# Bootstrap managed nodes: auditd, chronyd, Splunk UF + Cloud credentials.
 # Sources the repo-root .env so all variables are centralized.
 #
 # Usage:
-#   ./ansible_deployment/scripts/cac-apply.sh
+#   ./scripts/bootstrap.sh
 #
 # Required env (from top-level .env):
-#   AAP_BASE_URL, AAP_API_CLIENT_BEARER_TOKEN
+#   SPLUNK_UF_RPM, SPLUNK_CLOUD_CREDS_PACKAGE
 # Optional:
-#   AAP_VALIDATE_CERTS, SPLUNK_HEC_URL, SPLUNK_HEC_TOKEN,
-#   SERVICENOW_INSTANCE_URL, SERVICENOW_USERNAME, SERVICENOW_PASSWORD,
-#   CONFIG_BASELINE_REPO_URL, MANAGED_NODE_SSH_KEY, WEBHOOK_DE_IMAGE
+#   SPLUNK_UF_ADMIN_PASSWORD (default: Splunk4ward!)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-PLAYBOOK="${REPO_ROOT}/ansible_deployment/cac/apply.yml"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PLAYBOOK="${REPO_ROOT}/playbooks/bootstrap_node.yml"
+INVENTORY="${REPO_ROOT}/inventory/hosts.yml"
 
 if [[ -f "${REPO_ROOT}/.env" ]]; then
   echo "Loading environment from ${REPO_ROOT}/.env"
@@ -31,4 +30,5 @@ if ! command -v ansible-playbook >/dev/null 2>&1; then
   exit 1
 fi
 
-ansible-playbook "${PLAYBOOK}" "$@"
+echo "Running bootstrap against inventory: ${INVENTORY}"
+ansible-playbook "${PLAYBOOK}" -i "${INVENTORY}" "$@"

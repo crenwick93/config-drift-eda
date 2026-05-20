@@ -5,13 +5,25 @@
   gather_facts: true
 
   vars:
-    splunk_uf_package_url: "{{ splunk_uf_url | default('') }}"
-    splunk_deployment_server: "{{ splunk_ds | default('') }}"
-    splunk_receiving_indexer: "{{ splunk_indexer | default('') }}"
+    splunk_uf_rpm: "{{ lookup('env', 'SPLUNK_UF_RPM') | default('', true) }}"
+    splunk_cloud_creds: "{{ lookup('env', 'SPLUNK_CLOUD_CREDS_PACKAGE') | default('', true) }}"
+    splunk_admin_password: "{{ lookup('env', 'SPLUNK_UF_ADMIN_PASSWORD') | default('Splunk4ward!', true) }}"
     auditd_log_format: ENRICHED
 
   tasks:
-    # ── auditd setup ────────────────────────────────────────────────
+    # ── Time sync ──────────────────────────────────────────────────────
+    - name: Ensure chronyd is installed and running
+      ansible.builtin.dnf:
+        name: chrony
+        state: present
+
+    - name: Enable and start chronyd
+      ansible.builtin.service:
+        name: chronyd
+        state: started
+        enabled: true
+
+    # ── auditd setup ──────────────────────────────────────────────────
     - name: Ensure auditd is installed
       ansible.builtin.dnf:
         name:
@@ -42,7 +54,7 @@
         state: started
         enabled: true
 
-    # ── Splunk Universal Forwarder ──────────────────────────────────
+    # ── Splunk Universal Forwarder ────────────────────────────────────
     - name: Check if Splunk UF is already installed
       ansible.builtin.stat:
         path: /opt/splunkforwarder/bin/splunk
@@ -50,12 +62,12 @@
 
     - name: Install Splunk UF
       when:
-        - splunk_uf_package_url | length > 0
+        - splunk_uf_rpm | length > 0
         - not uf_binary.stat.exists
       block:
-        - name: Download Splunk UF package
-          ansible.builtin.get_url:
-            url: "{{ splunk_uf_package_url }}"
+        - name: Copy Splunk UF RPM to node
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../{{ splunk_uf_rpm }}"
             dest: /tmp/splunkforwarder.rpm
             mode: '0644'
 
@@ -65,10 +77,23 @@
             state: present
             disable_gpg_check: true
 
-        - name: Accept license and start UF
+        - name: Accept license and set admin password
           ansible.builtin.command:
-            cmd: /opt/splunkforwarder/bin/splunk start --accept-license --no-prompt --answer-yes
+            cmd: >
+              /opt/splunkforwarder/bin/splunk start
+              --accept-license --no-prompt --answer-yes
+              --seed-passwd {{ splunk_admin_password }}
             creates: /opt/splunkforwarder/var/run/splunk/splunkd.pid
+
+        - name: Enable boot-start (systemd)
+          ansible.builtin.command:
+            cmd: /opt/splunkforwarder/bin/splunk enable boot-start -systemd-managed 1
+          changed_when: true
+
+        - name: Clean up RPM
+          ansible.builtin.file:
+            path: /tmp/splunkforwarder.rpm
+            state: absent
 
     - name: Deploy UF inputs.conf for auditd logs
       ansible.builtin.template:
@@ -77,38 +102,37 @@
         owner: splunkfwd
         group: splunkfwd
         mode: '0600'
-      when: uf_binary.stat.exists or splunk_uf_package_url | length > 0
+      when: uf_binary.stat.exists or splunk_uf_rpm | length > 0
       notify: Restart Splunk UF
 
-    - name: Configure forward-server
-      ansible.builtin.command:
-        cmd: >
-          /opt/splunkforwarder/bin/splunk add forward-server
-          {{ splunk_receiving_indexer }}
-          -auth admin:changeme
+    # ── Splunk Cloud credentials package ──────────────────────────────
+    - name: Install Splunk Cloud credentials package
       when:
-        - splunk_receiving_indexer | length > 0
-        - uf_binary.stat.exists or splunk_uf_package_url | length > 0
-      register: fwd_result
-      changed_when: "'already exists' not in fwd_result.stderr"
-      failed_when:
-        - fwd_result.rc != 0
-        - "'already exists' not in fwd_result.stderr"
+        - splunk_cloud_creds | length > 0
+        - uf_binary.stat.exists or splunk_uf_rpm | length > 0
+      block:
+        - name: Copy credentials package to node
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../{{ splunk_cloud_creds }}"
+            dest: /tmp/splunkclouduf.spl
+            mode: '0600'
 
-    - name: Set deployment server
-      ansible.builtin.command:
-        cmd: >
-          /opt/splunkforwarder/bin/splunk set deploy-poll
-          {{ splunk_deployment_server }}
-          -auth admin:changeme
-      when:
-        - splunk_deployment_server | length > 0
-        - uf_binary.stat.exists or splunk_uf_package_url | length > 0
-      register: ds_result
-      changed_when: "'already configured' not in ds_result.stderr"
-      failed_when:
-        - ds_result.rc != 0
-        - "'already configured' not in ds_result.stderr"
+        - name: Install credentials package
+          ansible.builtin.command:
+            cmd: >
+              /opt/splunkforwarder/bin/splunk install app /tmp/splunkclouduf.spl
+              -auth admin:{{ splunk_admin_password }}
+          register: creds_result
+          changed_when: "'already installed' not in creds_result.stdout"
+          failed_when:
+            - creds_result.rc != 0
+            - "'already installed' not in creds_result.stdout"
+          notify: Restart Splunk UF
+
+        - name: Clean up credentials package
+          ansible.builtin.file:
+            path: /tmp/splunkclouduf.spl
+            state: absent
 
   handlers:
     - name: Restart auditd

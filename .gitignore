@@ -20,6 +20,10 @@
 .env
 .ansible
 
+# Splunk packages — downloaded manually, not committed (RPM ~120MB, creds are stack-specific)
+splunk_packages/*
+!splunk_packages/.gitkeep
+
 # Terraform
 terraform/.terraform/
 terraform/.terraform.lock.hcl

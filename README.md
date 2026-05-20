@@ -65,14 +65,53 @@ terraform destroy
 
 ### 2. Bootstrap managed nodes
 
+This installs chronyd (time sync), auditd rules, and the Splunk Universal Forwarder.
+
+Before running, download two files into the `splunk_packages/` directory (gitignored):
+
+#### 2a. Splunk Universal Forwarder RPM
+
+1. Go to [Splunk Universal Forwarder Downloads](https://www.splunk.com/en_us/download/universal-forwarder.html) (requires a free Splunk login).
+2. Select **Linux** → **64-bit** → **.rpm** (the managed EC2 instance is x86_64, not ARM).
+3. Click **"Download Now"** and save the file as `splunk_packages/splunkforwarder.rpm`.
+
+![Splunk UF Download](docs/images/splunk-uf-download.png)
+
+#### 2b. Splunk Cloud credentials package
+
+1. In Splunk Cloud, click **Apps** in the top menu and select **Universal Forwarder** from the sidebar.
+
+![Splunk Apps — Universal Forwarder](docs/images/splunk-apps-sidebar.png)
+
+2. Click the green **"Download Universal Forwarder Credentials"** button.
+
+![Download Universal Forwarder Credentials](docs/images/splunk-uf-credentials.png)
+
+3. Save the downloaded `.spl` file as `splunk_packages/splunkclouduf.spl`.
+
+This package authenticates the UF with your Splunk Cloud indexers. It's stack-specific so it cannot be committed to Git.
+
+#### 2c. Run the bootstrap
+
 ```bash
-ansible-playbook playbooks/bootstrap_node.yml -i <inventory>
+./scripts/bootstrap.sh
 ```
 
-This installs:
-- auditd rules (`/etc/audit/rules.d/50-drift.rules`)
-- Splunk Universal Forwarder (configured to ship `linux:audit` logs)
-- `log_format = ENRICHED` in auditd.conf for Splunk CIM uid→user resolution
+The script loads `.env` automatically, then runs the bootstrap playbook which copies both packages to the managed node, installs them, configures auditd with `config_drift` watch rules, and starts forwarding `linux:audit` logs to Splunk Cloud.
+
+#### 2d. Verify events are flowing
+
+After the bootstrap completes, wait a minute then search in Splunk Cloud:
+
+```spl
+index=main sourcetype=linux:audit
+```
+
+You should see auditd events appearing:
+
+![Splunk auditd events](docs/images/splunk-auditd-events.png)
+
+> **Note:** You'll likely see hundreds of events immediately. This is normal — when the Universal Forwarder starts monitoring `/var/log/audit/audit.log`, it reads the **entire existing file** from the beginning, not just new events. All historical auditd activity since the instance was launched gets shipped in one batch. After this initial backlog, the flow settles to a trickle of a few events per minute.
 
 ### 3. Configure Splunk Cloud
 

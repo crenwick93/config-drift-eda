@@ -245,13 +245,13 @@ eda_credentials:
       oauth_token: "{{ aap_token }}"
       verify_ssl: "{{ aap_validate_certs }}"
 
-  - name: "Splunk Webhook Token"
-    description: "Token credential for authenticating Splunk Cloud webhook delivery"
+  - name: "Splunk Webhook Auth"
+    description: "Basic auth credential for authenticating Splunk Cloud webhook delivery"
     organization: "config-drift-demo"
-    credential_type: "Token"
+    credential_type: "Basic Event Stream"
     inputs:
-      token: "{{ splunk_webhook_token | default('changeme') }}"
-      http_header_key: "Authorization"
+      username: "splunk"
+      password: "{{ splunk_webhook_token | default('changeme') }}"
 
 # Event Stream — managed webhook endpoint that Splunk posts to.
 # EDA generates a URL after creation; configure that URL as the
@@ -260,8 +260,8 @@ eda_event_streams:
   - name: "Splunk Config Drift Alerts"
     description: "Receives Splunk saved search webhook alerts for config drift events"
     organization: "config-drift-demo"
-    event_stream_type: "Token"
-    credential: "Splunk Webhook Token"
+    event_stream_type: "basic"
+    credential_name: "Splunk Webhook Auth"
     forward_events: true
 
 eda_rulebook_activations:
