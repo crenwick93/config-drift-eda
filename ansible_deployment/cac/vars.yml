@@ -270,7 +270,7 @@ eda_rulebook_activations:
     organization: "config-drift-demo"
     project: "Config Drift Event Rules"
     rulebook: "config_drift.yml"
-    decision_environment: "Default Decision Environment"
+    decision_environment: "Hub Default Decision Environment"
     eda_credentials:
       - "AAP Controller"
     event_streams:
