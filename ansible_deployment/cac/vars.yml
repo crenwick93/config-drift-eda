@@ -241,7 +241,7 @@ eda_credentials:
     organization: "config-drift-demo"
     credential_type: "Red Hat Ansible Automation Platform"
     inputs:
-      host: "{{ aap_hostname }}/api/controller/v2"
+      host: "{{ aap_hostname }}/api/controller"
       oauth_token: "{{ aap_token }}"
       verify_ssl: "{{ aap_validate_certs }}"
 
