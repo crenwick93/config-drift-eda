@@ -6,24 +6,8 @@
         host: 0.0.0.0
         port: 5001
   rules:
-    - name: SSH config drift detected
-      condition: >-
-        event.payload.result.name is defined and
-        "sshd_config" in event.payload.result.name
-      throttle:
-        once_within: 2 minutes
-        group_by_attributes:
-          - event.payload.result.host
+    - name: Catch all events (debug)
+      condition: event is defined
       action:
-        run_workflow_template:
-          name: Remediate SSH Config Drift
-          organization: config-drift-demo
-          job_args:
-            limit: "{{ event.payload.result.host }}"
-            extra_vars:
-              drift_key: "{{ event.payload.result.drift_key | default('config_drift') }}"
-              triggering_user: "{{ event.payload.result.auid | default('unknown') }}"
-              splunk_sid: "{{ event.payload.sid | default('') }}"
-              splunk_results_link: "{{ event.payload.results_link | default('') }}"
-              remediated_host: "{{ event.payload.result.host }}"
-              remediated_file: "/etc/ssh/sshd_config"
+        debug:
+          msg: "Event received: {{ event }}"

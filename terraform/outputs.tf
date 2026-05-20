@@ -22,3 +22,14 @@ output "ssh_command" {
   description = "SSH command to connect to the managed node"
   value       = "ssh -i ${local_file.private_key.filename} ec2-user@${aws_route53_record.managed_node.fqdn}"
 }
+
+output "managed_node_hosts_json" {
+  description = "JSON value for MANAGED_NODE_HOSTS in .env"
+  value = jsonencode([
+    {
+      name      = aws_route53_record.managed_node.fqdn
+      inventory = "RHEL Managed Nodes"
+      enabled   = true
+    }
+  ])
+}
