@@ -12,7 +12,8 @@
         - name: Open new incident
           servicenow.itsm.incident:
             state: new
-            caller: "{{ sn_caller_name | default('Ansible Automation') }}"
+            other:
+              caller_id: "{{ sn_caller_name | default('Ansible Automation') }}"
             short_description: >-
               Config drift detected on {{ remediated_host | default('unknown') }}
             description: >
