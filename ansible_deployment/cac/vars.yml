@@ -253,6 +253,13 @@ eda_credentials:
       username: "splunk"
       password: "{{ splunk_webhook_token | default('changeme') }}"
 
+eda_decision_environments:
+  - name: "Config Drift DE"
+    description: "Decision environment for config drift rulebooks (uses locally cached image)"
+    organization: "config-drift-demo"
+    image_url: "aap.chrislab.dev/de-supported-rhel9:latest"
+    pull_policy: "missing"
+
 # Event Stream — managed webhook endpoint that Splunk posts to.
 # EDA generates a URL after creation; configure that URL as the
 # Splunk webhook alert action target.
@@ -270,7 +277,7 @@ eda_rulebook_activations:
     organization: "config-drift-demo"
     project: "Config Drift Event Rules"
     rulebook: "config_drift.yml"
-    decision_environment: "Hub Default Decision Environment"
+    decision_environment: "Config Drift DE"
     eda_credentials:
       - "AAP Controller"
     event_streams:
