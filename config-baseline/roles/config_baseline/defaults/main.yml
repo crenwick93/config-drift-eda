@@ -19,9 +19,11 @@ desired_sshd:
   PermitRootLogin: "no"
   PasswordAuthentication: "no"
   PubkeyAuthentication: "yes"
+  AuthorizedKeysFile: ".ssh/authorized_keys"
+  UsePAM: "yes"
   X11Forwarding: "no"
   ClientAliveInterval: 300
   ClientAliveCountMax: 2
   MaxAuthTries: 3
   LogLevel: VERBOSE
-  AllowGroups: "ssh-users wheel"
+  AllowGroups: "ssh-users wheel ec2-user"

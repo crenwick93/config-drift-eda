@@ -41,6 +41,6 @@
         files_enforced: "{{ managed_files | map(attribute='name') | list }}"
     validate_certs: true
   run_once: true
-  no_log: false
+  no_log: true
   ignore_errors: true
   when: splunk_hec_url is defined
