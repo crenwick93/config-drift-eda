@@ -7,7 +7,6 @@
         port: 5001
   rules:
     - name: Catch all events (debug)
-      condition: event is defined
+      condition: event.meta is defined
       action:
-        debug:
-          msg: "Event received: {{ event }}"
+        print_event:

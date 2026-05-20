@@ -278,7 +278,6 @@ eda_rulebook_activations:
     project: "Config Drift Event Rules"
     rulebook: "config_drift.yml"
     decision_environment: "Config Drift DE"
-    websocket_ssl_verify: false
     eda_credentials:
       - "AAP Controller"
     event_streams:
