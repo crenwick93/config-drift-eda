@@ -269,7 +269,7 @@ eda_rulebook_activations:
     description: "Receives config drift events via Event Stream and dispatches remediation workflow"
     organization: "config-drift-demo"
     project: "Config Drift Event Rules"
-    rulebook: "eda/rulebooks/config_drift.yml"
+    rulebook: "config_drift.yml"
     decision_environment: "Default Decision Environment"
     eda_credentials:
       - "AAP Controller"
