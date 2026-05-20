@@ -1,15 +1,12 @@
-aws_region   = "us-east-1"
-key_name     = "my-keypair"
+aws_region = "us-east-1"
 
-# Lock SSH to your IP
+# Lock SSH to your IP + the AAP controller's public IP
 allowed_ssh_cidrs = ["203.0.113.0/32"]
 
-# Replace with actual Splunk Cloud egress IPs after trial registration.
-# Until then, 0.0.0.0/0 works for dev but is NOT production-appropriate.
-splunk_cloud_egress_cidrs = ["0.0.0.0/0"]
+# Route53 hosted zone — managed node becomes rhel-drift.<domain>
+demo_domain           = "sandbox2797.opentlc.com"
+managed_node_hostname = "rhel-drift"
 
-# Leave empty to use default VPC/subnet, or specify explicit IDs
+# Leave empty to use default VPC/subnet
 # vpc_id    = "vpc-0123456789abcdef0"
 # subnet_id = "subnet-0123456789abcdef0"
-
-managed_node_count = 2

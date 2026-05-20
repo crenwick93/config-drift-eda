@@ -31,8 +31,8 @@ sshd_config, etc.      (TCP/443 outbound)         + Webhook alert
 
 | Repo | Purpose |
 |------|---------|
-| **config-drift-eda** (this repo) | Demo plumbing — Terraform, auditd rules, EDA rulebook, bootstrap playbook, Splunk configs |
-| **config-baseline** (separate repo) | Desired-state "catalog" — inventories, hardening roles, remediation playbooks, Jinja2 templates |
+| **config-drift-eda** (this repo) | Everything — Terraform, auditd rules, EDA rulebook, bootstrap playbook, Splunk configs, AAP CaC, and the desired-state baseline |
+| **config-baseline/** (subdirectory) | Desired-state "catalog" — inventories, hardening roles, remediation playbooks, Jinja2 templates |
 
 ## Prerequisites
 
@@ -105,23 +105,49 @@ The remediation playbook posts results back to Splunk via HEC so you get both th
 
 #### 3b. Add EDA webhook to the allow-list
 
-Settings → Server Settings → Webhook allow list → add your EDA endpoint URL (`https://<eda-host>:5001/endpoint`).
+1. Navigate to **Settings → Server Settings → Webhook allow list**.
+2. Add your EDA endpoint URL: `https://<aap-eda-host>/endpoint` (the EDA controller on your AAP instance).
+3. Save.
+
+Without this, Splunk Cloud will refuse to fire webhooks to your EDA listener.
 
 #### 3c. Create the saved search alert
 
-Import the SPL from `splunk/saved_search.spl` as a real-time scheduled alert with a Webhook alert action pointing to `https://<eda-host>:5001/endpoint`. Throttle 5 min by host.
+1. Navigate to **Settings → Searches, reports, and alerts → New Alert**.
+2. Paste the SPL from `splunk/saved_search.spl`:
 
-### 4. Activate EDA rulebook
+```spl
+index=linux sourcetype=linux:audit key=ssh_config_change type=PATH nametype=NORMAL
+| stats latest(_time) as event_time, values(host) as host,
+        values(auid) as triggering_user by key
+| eval host=mvindex(host,0)
+```
 
-In AAP EDA Controller, create a Rulebook Activation using `eda/rulebooks/config_drift.yml`. Ensure port 5001 is open inbound from Splunk Cloud egress IPs only (see `terraform/security_groups.tf`).
+3. Configure:
+   - **Alert type:** Real-time
+   - **Trigger condition:** Number of results > 0
+   - **Throttle:** 5 minutes, group by `host`
+   - **Alert action:** Webhook
+   - **Webhook URL:** `https://<aap-eda-host>/endpoint`
+4. Save.
 
-### 5. Create AAP job template
+#### 3d. Create a `linux` index (if not using `main`)
 
-- **Name:** `Remediate SSH Config Drift`
-- **Project:** synced to the `config-baseline` repo
-- **Playbook:** `playbooks/remediate_ssh.yml`
-- **Credentials:** machine credential for managed nodes
-- **Extra vars:** `splunk_hec_url`, `splunk_hec_token` (store token in AAP credential or vault)
+If you want audit logs in a dedicated index: **Settings → Indexes → New Index → `linux`**. Then update the saved search to use `index=linux`.
+
+### 4. Configure AAP (config-as-code)
+
+All AAP objects (org, credentials, projects, job templates, workflow, EDA rulebook activation) are defined in `ansible_deployment/cac/vars.yml` and applied in one shot:
+
+```bash
+./ansible_deployment/scripts/cac-apply.sh
+```
+
+This creates:
+- **Organization:** `config-drift-demo` with `demo_config_drift_admin` user
+- **Workflow:** "Remediate SSH Config Drift" (Create SNOW incident → Remediate → Resolve SNOW incident)
+- **EDA Rulebook Activation:** webhook listener on port 5001
+- **Credentials:** Machine SSH, Splunk HEC, ServiceNow, AAP Controller token
 
 ## Demo Script
 

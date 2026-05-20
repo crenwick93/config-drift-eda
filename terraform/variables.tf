@@ -1,42 +1,30 @@
 variable "aws_region" {
   description = "AWS region for all resources"
   type        = string
-  default     = "us-east-1"
-}
-
-variable "key_name" {
-  description = "EC2 key pair name for SSH access"
-  type        = string
-}
-
-variable "aap_instance_type" {
-  description = "Instance type for the AAP + EDA controller host"
-  type        = string
-  default     = "t3.xlarge"
+  default     = "eu-west-1"
 }
 
 variable "managed_node_instance_type" {
-  description = "Instance type for RHEL managed nodes"
+  description = "Instance type for the RHEL managed node"
   type        = string
   default     = "t3.micro"
 }
 
-variable "managed_node_count" {
-  description = "Number of RHEL managed nodes to provision"
-  type        = number
-  default     = 2
-}
-
 variable "allowed_ssh_cidrs" {
-  description = "CIDR blocks allowed to SSH into all instances"
+  description = "CIDR blocks allowed to SSH into the managed node (your IP + AAP controller)"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
-variable "splunk_cloud_egress_cidrs" {
-  description = "Splunk Cloud egress IP ranges for webhook delivery (lock down EDA port)"
-  type        = list(string)
-  default     = ["0.0.0.0/0"] # Replace with actual Splunk Cloud egress IPs after trial registration
+variable "demo_domain" {
+  description = "Base domain with an existing Route53 hosted zone (e.g. sandbox2797.opentlc.com)"
+  type        = string
+}
+
+variable "managed_node_hostname" {
+  description = "Hostname prefix for the managed node — becomes <hostname>.<demo_domain>"
+  type        = string
+  default     = "rhel-drift"
 }
 
 variable "vpc_id" {
@@ -46,7 +34,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_id" {
-  description = "Subnet ID for EC2 instances. Leave empty to use the first default subnet."
+  description = "Subnet ID for the EC2 instance. Leave empty to use the first default subnet."
   type        = string
   default     = ""
 }
