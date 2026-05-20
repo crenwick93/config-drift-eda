@@ -47,7 +47,7 @@
           servicenow.itsm.incident:
             sys_id: "{{ snow_sys_id }}"
             state: resolved
-            close_code: "Solved (Permanently)"
+            close_code: "Solution provided"
             close_notes: >
               Auto-remediated by AAP.
 
