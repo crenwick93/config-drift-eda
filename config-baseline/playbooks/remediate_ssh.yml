@@ -1,8 +1,0 @@
----
-- name: Remediate SSH Config Drift to known-good state
-  hosts: all
-  become: true
-  gather_facts: true
-
-  roles:
-    - ssh_hardening

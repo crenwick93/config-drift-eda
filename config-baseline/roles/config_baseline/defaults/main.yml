@@ -1,0 +1,27 @@
+---
+backup_dir: /var/lib/config-baseline/backups
+
+# Each managed file is defined as a list item. Add new files here to extend
+# the baseline — no changes needed to the rulebook or EDA config.
+managed_files:
+  - name: sshd_config
+    dest: /etc/ssh/sshd_config
+    template: sshd_config.j2
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "/usr/sbin/sshd -t -f %s"
+    restart_service: sshd
+
+# Desired state for sshd_config — override per host/group via host_vars.
+desired_sshd:
+  Port: 22
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  PubkeyAuthentication: "yes"
+  X11Forwarding: "no"
+  ClientAliveInterval: 300
+  ClientAliveCountMax: 2
+  MaxAuthTries: 3
+  LogLevel: VERBOSE
+  AllowGroups: "ssh-users wheel"

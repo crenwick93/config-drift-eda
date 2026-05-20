@@ -16,7 +16,7 @@
           - event.payload.result.host
       action:
         run_workflow_template:
-          name: Remediate SSH Config Drift
+          name: Remediate Config Drift
           organization: config-drift-demo
           job_args:
             limit: "{{ event.payload.result.host }}"

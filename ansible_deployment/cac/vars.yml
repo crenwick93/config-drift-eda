@@ -153,12 +153,12 @@ controller_hosts: "{{ managed_node_hosts }}"
 # Job Templates
 # -----------------------------------------------------------------------------
 controller_templates:
-  - name: "Remediate SSH Config"
-    description: "Restore sshd_config to known-good state from Git baseline and report to Splunk"
+  - name: "Apply Config Baseline"
+    description: "Enforce desired-state configuration from Git baseline and report to Splunk"
     organization: "config-drift-demo"
     job_type: "run"
     project: "Config Baseline"
-    playbook: "config-baseline/playbooks/remediate_ssh.yml"
+    playbook: "config-baseline/playbooks/remediate.yml"
     inventory: "RHEL Managed Nodes"
     ask_variables_on_launch: true
     ask_limit_on_launch: true
@@ -196,8 +196,8 @@ controller_templates:
 # Workflow Templates
 # -----------------------------------------------------------------------------
 controller_workflows:
-  - name: "Remediate SSH Config Drift"
-    description: "Create SNOW incident → remediate sshd_config → resolve SNOW incident"
+  - name: "Remediate Config Drift"
+    description: "Create SNOW incident → enforce config baseline → resolve SNOW incident"
     organization: "config-drift-demo"
     ask_variables_on_launch: true
     ask_limit_on_launch: true
@@ -212,7 +212,7 @@ controller_workflows:
             - identifier: remediate
       - identifier: remediate
         unified_job_template:
-          name: "Remediate SSH Config"
+          name: "Apply Config Baseline"
           type: job_template
         related:
           success_nodes:

@@ -1,0 +1,33 @@
+---
+- name: "Backup {{ managed_file.name }} for forensics"
+  ansible.builtin.copy:
+    src: "{{ managed_file.dest }}"
+    dest: "{{ backup_dir }}/{{ managed_file.name }}.drift-{{ ansible_date_time.iso8601_basic_short }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0600"
+  ignore_errors: true
+
+- name: "Render desired {{ managed_file.name }}"
+  ansible.builtin.template:
+    src: "{{ managed_file.template }}"
+    dest: "{{ managed_file.dest }}"
+    owner: "{{ managed_file.owner | default('root') }}"
+    group: "{{ managed_file.group | default('root') }}"
+    mode: "{{ managed_file.mode | default('0644') }}"
+    backup: true
+    validate: "{{ managed_file.validate | default(omit) }}"
+  notify: "Restart {{ managed_file.restart_service }}"
+  when: managed_file.template is defined
+
+- name: "Copy desired {{ managed_file.name }}"
+  ansible.builtin.copy:
+    src: "{{ managed_file.src }}"
+    dest: "{{ managed_file.dest }}"
+    owner: "{{ managed_file.owner | default('root') }}"
+    group: "{{ managed_file.group | default('root') }}"
+    mode: "{{ managed_file.mode | default('0644') }}"
+    backup: true
+  notify: "Restart {{ managed_file.restart_service }}"
+  when: managed_file.src is defined and managed_file.template is not defined

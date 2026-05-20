@@ -2,29 +2,24 @@
 - name: Show remediation context
   ansible.builtin.debug:
     msg: >
-      Drift remediation on {{ inventory_hostname }}.
+      Config baseline enforcement on {{ inventory_hostname }}.
       Trigger: {{ drift_key | default('manual') }} by auid={{ triggering_user | default('n/a') }}.
       Splunk: {{ splunk_results_link | default('n/a') }}
 
-- name: Backup the drifted file for forensics
-  ansible.builtin.copy:
-    src: "{{ sshd_config_path }}"
-    dest: "{{ sshd_backup_dir }}/sshd_config.drift-{{ ansible_date_time.iso8601_basic_short }}"
-    remote_src: true
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
     owner: root
     group: root
-    mode: '0600'
+    mode: "0700"
 
-- name: Render desired sshd_config (validated by sshd -t)
-  ansible.builtin.template:
-    src: sshd_config.j2
-    dest: "{{ sshd_config_path }}"
-    owner: root
-    group: root
-    mode: '0600'
-    backup: true
-    validate: '/usr/sbin/sshd -t -f %s'
-  notify: Reload sshd
+- name: Enforce managed files
+  ansible.builtin.include_tasks: enforce_file.yml
+  loop: "{{ managed_files }}"
+  loop_control:
+    loop_var: managed_file
+    label: "{{ managed_file.name }}"
 
 - name: Report remediation outcome to Splunk HEC
   ansible.builtin.uri:
@@ -37,14 +32,13 @@
       sourcetype: "ansible:remediation"
       event:
         host: "{{ inventory_hostname }}"
-        file: "{{ sshd_config_path }}"
         drift_key: "{{ drift_key | default('manual') }}"
         triggered_by: "{{ triggering_user | default('manual') }}"
         splunk_sid: "{{ splunk_sid | default('') }}"
         aap_job_id: "{{ awx_job_id | default('local') }}"
         action: "{{ drift_action | default('remediate') }}"
         result: success
+        files_enforced: "{{ managed_files | map(attribute='name') | list }}"
   delegate_to: localhost
   run_once: true
   when: splunk_hec_url is defined
-
