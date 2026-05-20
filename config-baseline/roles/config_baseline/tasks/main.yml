@@ -39,6 +39,7 @@
         action: "{{ drift_action | default('remediate') }}"
         result: success
         files_enforced: "{{ managed_files | map(attribute='name') | list }}"
-  delegate_to: localhost
+    validate_certs: true
   run_once: true
+  no_log: true
   when: splunk_hec_url is defined
