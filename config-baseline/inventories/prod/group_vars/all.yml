@@ -1,0 +1,22 @@
+---
+# Universal baseline — applies to every managed node.
+# This file IS the declarative desired state (the "catalog" equivalent).
+
+desired_sshd:
+  Port: 22
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  PubkeyAuthentication: "yes"
+  X11Forwarding: "no"
+  ClientAliveInterval: 300
+  ClientAliveCountMax: 2
+  MaxAuthTries: 3
+  LogLevel: VERBOSE
+  AllowGroups: "ssh-users wheel"
+
+# Splunk HEC for close-the-loop reporting.
+# Store the token in AAP credential/vault, not in plaintext.
+# splunk_hec_url: "https://input-prd-p-XXXXXXX.cloud.splunk.com:8088/services/collector/event"
+# splunk_hec_token: "{{ vault_splunk_hec_token }}"
+
+drift_action: remediate  # 'remediate' or 'alert_only'

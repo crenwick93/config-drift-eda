@@ -1,0 +1,14 @@
+# Config drift detection rules for Event-Driven Ansible remediation.
+# Deployed to /etc/audit/rules.d/50-drift.rules on managed nodes.
+# The -k key is the linchpin: Splunk filters on it, EDA branches on it.
+
+-w /etc/ssh/sshd_config -p wa -k ssh_config_change
+-w /etc/ssh/sshd_config.d/ -p wa -k ssh_config_change
+
+-w /etc/sudoers -p wa -k sudoers_change
+-w /etc/sudoers.d/ -p wa -k sudoers_change
+
+-w /etc/pam.d/ -p wa -k pam_change
+
+# Self-protecting: detect tampering with the audit configuration itself
+-w /etc/audit/ -p wa -k auditconfig

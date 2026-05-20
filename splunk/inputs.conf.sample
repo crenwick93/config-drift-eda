@@ -1,0 +1,8 @@
+# Splunk Universal Forwarder inputs for auditd log shipping.
+# Deploy to /opt/splunkforwarder/etc/system/local/inputs.conf on each managed node.
+# The bootstrap_node.yml playbook handles this automatically.
+
+[monitor:///var/log/audit/audit.log]
+disabled = false
+sourcetype = linux:audit
+index = linux

@@ -1,0 +1,263 @@
+---
+# =============================================================================
+# AAP Configuration as Code — Config Drift Remediation Demo
+# =============================================================================
+# Single organization. EDA webhook listener receives Splunk alerts,
+# triggers a Controller job template that remediates drift, reports
+# back to Splunk via HEC, and creates a ServiceNow incident.
+#
+# apply.yml loads this file and runs infra.aap_configuration.dispatch
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Organizations
+# -----------------------------------------------------------------------------
+aap_organizations:
+  - name: "config-drift-demo"
+    description: "Config drift remediation demo"
+
+# -----------------------------------------------------------------------------
+# Organization Admin User
+# -----------------------------------------------------------------------------
+aap_user_accounts:
+  - username: "demo_config_drift_admin"
+    password: "{{ org_admin_password }}"
+    first_name: "Config Drift"
+    last_name: "Admin"
+    email: "config_drift_admin@demo.local"
+    is_superuser: false
+    organization: "config-drift-demo"
+
+controller_roles:
+  - user: "demo_config_drift_admin"
+    organization: "config-drift-demo"
+    role: "admin"
+
+# -----------------------------------------------------------------------------
+# Custom Credential Types
+# -----------------------------------------------------------------------------
+controller_credential_types:
+  - name: "Splunk HEC"
+    description: "HTTP Event Collector endpoint for close-the-loop reporting"
+    kind: "cloud"
+    inputs:
+      fields:
+        - id: SPLUNK_HEC_URL
+          type: string
+          label: "HEC URL"
+        - id: SPLUNK_HEC_TOKEN
+          type: string
+          label: "HEC Token"
+          secret: true
+      required:
+        - SPLUNK_HEC_URL
+        - SPLUNK_HEC_TOKEN
+    injectors:
+      extra_vars:
+        splunk_hec_url: !unsafe "{{ SPLUNK_HEC_URL }}"
+        splunk_hec_token: !unsafe "{{ SPLUNK_HEC_TOKEN }}"
+
+  - name: "ServiceNow"
+    description: "ServiceNow instance credentials for incident creation"
+    kind: "cloud"
+    inputs:
+      fields:
+        - id: SN_INSTANCE
+          type: string
+          label: "Instance URL (https://devXXXXXX.service-now.com)"
+        - id: SN_USERNAME
+          type: string
+          label: "Username"
+        - id: SN_PASSWORD
+          type: string
+          label: "Password"
+          secret: true
+        - id: SN_CALLER_NAME
+          type: string
+          label: "Caller display name for incidents"
+      required:
+        - SN_INSTANCE
+        - SN_USERNAME
+        - SN_PASSWORD
+    injectors:
+      env:
+        SN_HOST: !unsafe "{{ SN_INSTANCE }}"
+        SN_USERNAME: !unsafe "{{ SN_USERNAME }}"
+        SN_PASSWORD: !unsafe "{{ SN_PASSWORD }}"
+      extra_vars:
+        sn_caller_name: !unsafe "{{ SN_CALLER_NAME }}"
+
+# -----------------------------------------------------------------------------
+# Credentials
+# -----------------------------------------------------------------------------
+controller_credentials:
+  - name: "Managed Nodes SSH"
+    description: "Machine credential for SSH to RHEL managed nodes"
+    organization: "config-drift-demo"
+    credential_type: "Machine"
+    inputs:
+      username: "{{ managed_node_ssh_user }}"
+      ssh_key_data: "{{ managed_node_ssh_key }}"
+      become_method: sudo
+
+  - name: "Splunk HEC"
+    description: "HEC token for remediation close-the-loop reporting"
+    organization: "config-drift-demo"
+    credential_type: "Splunk HEC"
+    inputs:
+      SPLUNK_HEC_URL: "{{ splunk_hec_url }}"
+      SPLUNK_HEC_TOKEN: "{{ splunk_hec_token }}"
+
+  - name: "ServiceNow"
+    description: "ServiceNow PDI for incident creation on drift remediation"
+    organization: "config-drift-demo"
+    credential_type: "ServiceNow"
+    inputs:
+      SN_INSTANCE: "{{ sn_instance }}"
+      SN_USERNAME: "{{ sn_username }}"
+      SN_PASSWORD: "{{ sn_password }}"
+      SN_CALLER_NAME: "{{ sn_caller_name }}"
+
+  - name: "AAP Controller Token"
+    description: "Token for EDA to launch Controller job templates"
+    organization: "config-drift-demo"
+    credential_type: "Red Hat Ansible Automation Platform"
+    inputs:
+      host: "{{ aap_hostname }}"
+      oauth_token: "{{ aap_token }}"
+      verify_ssl: "{{ aap_validate_certs | bool }}"
+
+# -----------------------------------------------------------------------------
+# Projects
+# -----------------------------------------------------------------------------
+controller_projects:
+  - name: "Config Baseline"
+    description: "Desired-state roles and remediation playbooks (the 'catalog')"
+    organization: "config-drift-demo"
+    scm_type: "git"
+    scm_url: "{{ config_baseline_repo_url }}"
+    scm_branch: "{{ config_baseline_branch }}"
+    scm_update_on_launch: true
+
+# -----------------------------------------------------------------------------
+# Inventories + Hosts
+# -----------------------------------------------------------------------------
+controller_inventories:
+  - name: "RHEL Managed Nodes"
+    description: "Hosts monitored for config drift"
+    organization: "config-drift-demo"
+
+controller_hosts: "{{ managed_node_hosts }}"
+
+# -----------------------------------------------------------------------------
+# Job Templates
+# -----------------------------------------------------------------------------
+controller_templates:
+  - name: "Remediate SSH Config"
+    description: "Restore sshd_config to known-good state from Git baseline and report to Splunk"
+    organization: "config-drift-demo"
+    job_type: "run"
+    project: "Config Baseline"
+    playbook: "config-baseline/playbooks/remediate_ssh.yml"
+    inventory: "RHEL Managed Nodes"
+    ask_variables_on_launch: true
+    ask_limit_on_launch: true
+    credentials:
+      - "Managed Nodes SSH"
+      - "Splunk HEC"
+
+  - name: "Create ServiceNow Incident"
+    description: "Open a SNOW incident for config drift (sets snow_sys_id via set_stats)"
+    organization: "config-drift-demo"
+    job_type: "run"
+    project: "Config Baseline"
+    playbook: "config-baseline/playbooks/snow_incident.yml"
+    inventory: "RHEL Managed Nodes"
+    ask_variables_on_launch: true
+    credentials:
+      - "ServiceNow"
+    extra_vars:
+      snow_action: create
+
+  - name: "Update ServiceNow Incident"
+    description: "Resolve the SNOW incident after successful remediation"
+    organization: "config-drift-demo"
+    job_type: "run"
+    project: "Config Baseline"
+    playbook: "config-baseline/playbooks/snow_incident.yml"
+    inventory: "RHEL Managed Nodes"
+    ask_variables_on_launch: true
+    credentials:
+      - "ServiceNow"
+    extra_vars:
+      snow_action: update
+
+# -----------------------------------------------------------------------------
+# Workflow Templates
+# -----------------------------------------------------------------------------
+controller_workflows:
+  - name: "Remediate SSH Config Drift"
+    description: "Create SNOW incident → remediate sshd_config → resolve SNOW incident"
+    organization: "config-drift-demo"
+    ask_variables_on_launch: true
+    ask_limit_on_launch: true
+    survey_enabled: false
+    workflow_nodes:
+      - identifier: open_incident
+        unified_job_template:
+          name: "Create ServiceNow Incident"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: remediate
+      - identifier: remediate
+        unified_job_template:
+          name: "Remediate SSH Config"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: resolve_incident
+      - identifier: resolve_incident
+        unified_job_template:
+          name: "Update ServiceNow Incident"
+          type: job_template
+
+# -----------------------------------------------------------------------------
+# EDA — Decision Environment, Project, Credentials, Rulebook Activation
+# -----------------------------------------------------------------------------
+eda_decision_environments:
+  - name: "Default Decision Environment"
+    description: "Stock AAP 2.6 DE — webhook source is built in"
+    organization: "config-drift-demo"
+    image_url: "{{ webhook_de_image }}"
+
+eda_projects:
+  - name: "Config Drift Event Rules"
+    description: "EDA rulebooks for config drift detection and remediation dispatch"
+    organization: "config-drift-demo"
+    scm_type: "git"
+    scm_url: "{{ config_drift_eda_repo_url }}"
+    scm_branch: "{{ config_drift_eda_branch }}"
+    scm_update_on_launch: true
+    sync: true
+
+eda_credentials:
+  - name: "AAP Controller"
+    description: "Token for EDA to launch Controller job templates"
+    organization: "config-drift-demo"
+    credential_type: "Red Hat Ansible Automation Platform"
+    inputs:
+      host: "{{ aap_hostname }}"
+      oauth_token: "{{ aap_token }}"
+      verify_ssl: "{{ aap_validate_certs }}"
+
+eda_rulebook_activations:
+  - name: "Config Drift Remediation Listener"
+    description: "Webhook on :5001 — receives Splunk alerts for SSH/sudoers drift and dispatches remediation"
+    organization: "config-drift-demo"
+    project: "Config Drift Event Rules"
+    rulebook: "eda/rulebooks/config_drift.yml"
+    decision_environment: "Default Decision Environment"
+    eda_credentials:
+      - "AAP Controller"
+    enabled: true

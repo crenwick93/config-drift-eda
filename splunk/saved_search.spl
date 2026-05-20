@@ -1,0 +1,11 @@
+| -- Splunk saved search: SSH Config Drift Detection
+| -- Configure as: Real-time scheduled alert
+| -- Alert action: Webhook → https://<eda-host>:5001/endpoint
+| -- Throttle: 5 min by host
+| -- Prerequisite: Add EDA endpoint URL to Splunk Cloud webhook allow-list
+| --   (Settings → Server Settings → Webhook allow list)
+
+index=linux sourcetype=linux:audit key=ssh_config_change type=PATH nametype=NORMAL
+| stats latest(_time) as event_time, values(host) as host,
+        values(auid) as triggering_user by key
+| eval host=mvindex(host,0)

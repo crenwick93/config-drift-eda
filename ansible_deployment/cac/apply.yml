@@ -1,0 +1,50 @@
+---
+- name: Apply AAP objects (Controller and EDA) via infra.aap_configuration
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - infra.aap_configuration
+
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_BASE_URL') | default('', true) | regex_replace('/api/.*$', '') }}"
+    aap_token: "{{ lookup('env', 'AAP_API_CLIENT_BEARER_TOKEN') | default(omit, true) }}"
+    aap_validate_certs: "{{ (lookup('env', 'AAP_VALIDATE_CERTS') | default('false', true)) | bool }}"
+    aap_configuration_secure_logging: false
+    aap_configuration_collect_logs: true
+
+    org_admin_password: "{{ lookup('env', 'ORG_ADMIN_PASSWORD') | default('changeme', true) }}"
+
+    # Controller project pointing to the config-baseline desired state
+    config_baseline_repo_url: "{{ lookup('env', 'CONFIG_BASELINE_REPO_URL') | default('https://github.com/crenwick93/config-drift-eda.git', true) }}"
+    config_baseline_branch: "{{ lookup('env', 'CONFIG_BASELINE_BRANCH') | default('main', true) }}"
+
+    # EDA project pointing to this repo (rulebooks live here)
+    config_drift_eda_repo_url: "{{ lookup('env', 'CONFIG_DRIFT_EDA_REPO_URL') | default(config_baseline_repo_url, true) }}"
+    config_drift_eda_branch: "{{ lookup('env', 'CONFIG_DRIFT_EDA_BRANCH') | default('main', true) }}"
+
+    # Managed node SSH credential
+    managed_node_ssh_user: "{{ lookup('env', 'MANAGED_NODE_SSH_USER') | default('ec2-user', true) }}"
+    managed_node_ssh_key: "{{ lookup('env', 'MANAGED_NODE_SSH_KEY') | default(lookup('file', '~/.ssh/config-drift-key.pem'), true) }}"
+
+    # Splunk HEC close-the-loop
+    splunk_hec_url: "{{ lookup('env', 'SPLUNK_HEC_URL') | default('', true) }}"
+    splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') | default('', true) }}"
+
+    # Decision environment image (stock AAP 2.6 DE — webhook source is built in)
+    webhook_de_image: "{{ lookup('env', 'WEBHOOK_DE_IMAGE') | default('registry.redhat.io/ansible-automation-platform-26/de-minimal-rhel9:latest', true) }}"
+
+    # ServiceNow PDI
+    sn_instance: "{{ lookup('env', 'SERVICENOW_INSTANCE_URL') | default(omit, true) }}"
+    sn_username: "{{ lookup('env', 'SERVICENOW_USERNAME') | default(omit, true) }}"
+    sn_password: "{{ lookup('env', 'SERVICENOW_PASSWORD') | default(omit, true) }}"
+    sn_caller_name: "{{ lookup('env', 'SERVICENOW_CALLER_NAME') | default('Ansible Automation', true) }}"
+
+    # Managed node hosts — override via extra_vars or .env JSON
+    managed_node_hosts: "{{ (lookup('env', 'MANAGED_NODE_HOSTS') | default('[]', true)) | from_json | default(default_managed_node_hosts, true) }}"
+    default_managed_node_hosts: []
+
+  vars_files:
+    - vars.yml
+  roles:
+    - role: infra.aap_configuration.dispatch

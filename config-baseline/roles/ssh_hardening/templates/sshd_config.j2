@@ -1,0 +1,18 @@
+# Managed by AAP — drift is remediated automatically.
+# Rendered {{ ansible_date_time.iso8601 }} on {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+{% for k, v in desired_sshd.items() %}
+{{ k }} {{ v }}
+{% endfor %}
+
+{% if ansible_distribution_major_version | int >= 9 %}
+# RHEL 9+ uses crypto-policies and drop-in includes
+Include /etc/ssh/sshd_config.d/*.conf
+{% endif %}
+
+{% if 'fips' in ansible_kernel | lower %}
+KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521
+{% endif %}
+
+ListenAddress {{ ansible_default_ipv4.address }}
+Subsystem sftp /usr/libexec/openssh/sftp-server

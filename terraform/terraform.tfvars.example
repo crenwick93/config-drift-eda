@@ -1,0 +1,15 @@
+aws_region   = "us-east-1"
+key_name     = "my-keypair"
+
+# Lock SSH to your IP
+allowed_ssh_cidrs = ["203.0.113.0/32"]
+
+# Replace with actual Splunk Cloud egress IPs after trial registration.
+# Until then, 0.0.0.0/0 works for dev but is NOT production-appropriate.
+splunk_cloud_egress_cidrs = ["0.0.0.0/0"]
+
+# Leave empty to use default VPC/subnet, or specify explicit IDs
+# vpc_id    = "vpc-0123456789abcdef0"
+# subnet_id = "subnet-0123456789abcdef0"
+
+managed_node_count = 2

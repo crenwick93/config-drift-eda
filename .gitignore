@@ -1,0 +1,29 @@
+# Ignore macOS clutter
+.DS_Store
+
+# Track the generated video archive (do not ignore)
+!/assets/video.tar.gz
+
+# Ignore raw video files but keep the directory
+/assets/video/**
+!/assets/video/.gitkeep
+
+# Ignore audio files but keep the directory
+/assets/audio/**
+!/assets/audio/.gitkeep
+
+# Ignore any stray media anywhere
+*.mp3
+*.mp4
+
+
+.env
+.ansible
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+terraform/*.pem

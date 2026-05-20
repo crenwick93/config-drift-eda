@@ -1,0 +1,127 @@
+---
+- name: Bootstrap managed nodes for config drift detection
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    splunk_uf_package_url: "{{ splunk_uf_url | default('') }}"
+    splunk_deployment_server: "{{ splunk_ds | default('') }}"
+    splunk_receiving_indexer: "{{ splunk_indexer | default('') }}"
+    auditd_log_format: ENRICHED
+
+  tasks:
+    # ── auditd setup ────────────────────────────────────────────────
+    - name: Ensure auditd is installed
+      ansible.builtin.dnf:
+        name:
+          - audit
+          - audit-libs
+        state: present
+
+    - name: Set log_format to ENRICHED for Splunk CIM uid→user resolution
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: '^log_format\s*='
+        line: "log_format = {{ auditd_log_format }}"
+        backup: true
+      notify: Restart auditd
+
+    - name: Deploy drift detection audit rules
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../auditd/50-drift.rules"
+        dest: /etc/audit/rules.d/50-drift.rules
+        owner: root
+        group: root
+        mode: '0640'
+      notify: Reload audit rules
+
+    - name: Ensure auditd is enabled and running
+      ansible.builtin.service:
+        name: auditd
+        state: started
+        enabled: true
+
+    # ── Splunk Universal Forwarder ──────────────────────────────────
+    - name: Check if Splunk UF is already installed
+      ansible.builtin.stat:
+        path: /opt/splunkforwarder/bin/splunk
+      register: uf_binary
+
+    - name: Install Splunk UF
+      when:
+        - splunk_uf_package_url | length > 0
+        - not uf_binary.stat.exists
+      block:
+        - name: Download Splunk UF package
+          ansible.builtin.get_url:
+            url: "{{ splunk_uf_package_url }}"
+            dest: /tmp/splunkforwarder.rpm
+            mode: '0644'
+
+        - name: Install Splunk UF RPM
+          ansible.builtin.dnf:
+            name: /tmp/splunkforwarder.rpm
+            state: present
+            disable_gpg_check: true
+
+        - name: Accept license and start UF
+          ansible.builtin.command:
+            cmd: /opt/splunkforwarder/bin/splunk start --accept-license --no-prompt --answer-yes
+            creates: /opt/splunkforwarder/var/run/splunk/splunkd.pid
+
+    - name: Deploy UF inputs.conf for auditd logs
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../splunk/inputs.conf.j2"
+        dest: /opt/splunkforwarder/etc/system/local/inputs.conf
+        owner: splunkfwd
+        group: splunkfwd
+        mode: '0600'
+      when: uf_binary.stat.exists or splunk_uf_package_url | length > 0
+      notify: Restart Splunk UF
+
+    - name: Configure forward-server
+      ansible.builtin.command:
+        cmd: >
+          /opt/splunkforwarder/bin/splunk add forward-server
+          {{ splunk_receiving_indexer }}
+          -auth admin:changeme
+      when:
+        - splunk_receiving_indexer | length > 0
+        - uf_binary.stat.exists or splunk_uf_package_url | length > 0
+      register: fwd_result
+      changed_when: "'already exists' not in fwd_result.stderr"
+      failed_when:
+        - fwd_result.rc != 0
+        - "'already exists' not in fwd_result.stderr"
+
+    - name: Set deployment server
+      ansible.builtin.command:
+        cmd: >
+          /opt/splunkforwarder/bin/splunk set deploy-poll
+          {{ splunk_deployment_server }}
+          -auth admin:changeme
+      when:
+        - splunk_deployment_server | length > 0
+        - uf_binary.stat.exists or splunk_uf_package_url | length > 0
+      register: ds_result
+      changed_when: "'already configured' not in ds_result.stderr"
+      failed_when:
+        - ds_result.rc != 0
+        - "'already configured' not in ds_result.stderr"
+
+  handlers:
+    - name: Restart auditd
+      ansible.builtin.service:
+        name: auditd
+        state: restarted
+
+    - name: Reload audit rules
+      ansible.builtin.command:
+        cmd: augenrules --load
+      changed_when: true
+
+    - name: Restart Splunk UF
+      ansible.builtin.service:
+        name: SplunkForwarder
+        state: restarted

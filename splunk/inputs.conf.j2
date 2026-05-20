@@ -1,0 +1,7 @@
+# Splunk Universal Forwarder inputs for auditd log shipping.
+# Deployed to /opt/splunkforwarder/etc/system/local/inputs.conf
+
+[monitor:///var/log/audit/audit.log]
+disabled = false
+sourcetype = linux:audit
+index = linux

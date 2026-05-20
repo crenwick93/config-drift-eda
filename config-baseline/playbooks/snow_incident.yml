@@ -1,0 +1,67 @@
+---
+- name: "ServiceNow incident management for config drift"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    # ── CREATE ────────────────────────────────────────────────────────
+    - name: Create incident
+      when: snow_action | default('create') == 'create'
+      block:
+        - name: Open new incident
+          servicenow.itsm.incident:
+            state: new
+            caller: "{{ sn_caller_name | default('Ansible Automation') }}"
+            short_description: >-
+              Config drift detected: {{ remediated_file | default('/etc/ssh/sshd_config') }}
+              on {{ remediated_host | default('unknown') }}
+            description: >
+              Config drift detected and auto-remediation initiated by AAP.
+
+              Host: {{ remediated_host | default('unknown') }}
+              File: {{ remediated_file | default('/etc/ssh/sshd_config') }}
+              Drift key: {{ drift_key | default('manual') }}
+              Triggered by (auid): {{ triggering_user | default('unknown') }}
+              Splunk search: {{ splunk_results_link | default('n/a') }}
+
+              Remediation is in progress.
+            impact: low
+            urgency: low
+            category: "Software"
+            subcategory: "Operating System"
+          register: snow_result
+
+        - name: Show incident number
+          ansible.builtin.debug:
+            msg: "ServiceNow incident created: {{ snow_result.record.number }} ({{ snow_result.record.sys_id }})"
+
+        - name: Pass incident ID to downstream workflow nodes
+          ansible.builtin.set_stats:
+            data:
+              snow_sys_id: "{{ snow_result.record.sys_id }}"
+              snow_number: "{{ snow_result.record.number }}"
+
+    # ── UPDATE / RESOLVE ──────────────────────────────────────────────
+    - name: Resolve incident
+      when: snow_action | default('create') == 'update'
+      block:
+        - name: Update incident to resolved
+          servicenow.itsm.incident:
+            sys_id: "{{ snow_sys_id }}"
+            state: resolved
+            close_code: "Solved (Permanently)"
+            close_notes: >
+              Auto-remediated by AAP.
+
+              Host: {{ remediated_host | default('unknown') }}
+              File: {{ remediated_file | default('/etc/ssh/sshd_config') }}
+              AAP Job ID: {{ awx_job_id | default('local') }}
+
+              The file was restored to the desired state from Git and
+              validated with sshd -t before applying. A forensics backup
+              of the drifted file was preserved.
+
+        - name: Show resolution
+          ansible.builtin.debug:
+            msg: "ServiceNow incident {{ snow_number | default(snow_sys_id) }} resolved."
