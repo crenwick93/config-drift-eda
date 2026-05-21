@@ -9,3 +9,9 @@
     name: sshd
     state: reloaded
   listen: "Restart sshd"
+
+- name: Restart chronyd
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+  listen: "Restart chronyd"

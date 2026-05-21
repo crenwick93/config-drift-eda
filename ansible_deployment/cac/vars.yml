@@ -164,7 +164,6 @@ controller_templates:
     ask_limit_on_launch: true
     credentials:
       - "Managed Nodes SSH"
-      - "Splunk HEC"
 
   - name: "Create ServiceNow Incident"
     description: "Open a SNOW incident for config drift (sets snow_sys_id via set_stats)"

@@ -1,0 +1,11 @@
+# Splunk Universal Forwarder outputs — forward to Splunk Enterprise indexer.
+# Deployed to /opt/splunkforwarder/etc/system/local/outputs.conf
+
+[tcpout]
+defaultGroup = default-autolb-group
+
+[tcpout:default-autolb-group]
+server = {{ splunk_indexer_host }}:{{ splunk_indexer_port }}
+
+[tcpout-server://{{ splunk_indexer_host }}:{{ splunk_indexer_port }}]
+sslVerifyServerCert = false

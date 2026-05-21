@@ -26,3 +26,4 @@
               splunk_sid: "{{ event.payload.sid | default('') }}"
               splunk_results_link: "{{ event.payload.results_link | default('') }}"
               remediated_host: "{{ event.payload.result.host }}"
+              changed_file: "{{ event.payload.result.name | default('unknown') }}"

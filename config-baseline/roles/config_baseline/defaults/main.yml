@@ -13,6 +13,14 @@ managed_files:
     validate: "/usr/sbin/sshd -t -f %s"
     restart_service: sshd
 
+  - name: chrony.conf
+    dest: /etc/chrony.conf
+    template: chrony.conf.j2
+    owner: root
+    group: root
+    mode: "0644"
+    restart_service: chronyd
+
 # Desired state for sshd_config — override per host/group via host_vars.
 desired_sshd:
   Port: 22
@@ -27,3 +35,15 @@ desired_sshd:
   MaxAuthTries: 3
   LogLevel: VERBOSE
   AllowGroups: "ssh-users wheel ec2-user"
+
+# Desired state for chrony.conf — override per host/group via host_vars.
+desired_ntp_servers:
+  - 169.254.169.123    # AWS Time Sync (preferred in EC2)
+  - 0.rhel.pool.ntp.org
+  - 1.rhel.pool.ntp.org
+  - 2.rhel.pool.ntp.org
+
+chrony_settings:
+  makestep: "1.0 3"
+  rtcsync: true
+  logdir: /var/log/chrony

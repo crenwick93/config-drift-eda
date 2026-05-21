@@ -15,7 +15,7 @@
             other:
               caller_id: "{{ sn_caller_name | default('event_driven_ansible') }}"
             short_description: "Config drift detected on {{ remediated_host | default('unknown') }}"
-            description: "Configuration drift detected — auto-remediation initiated by Ansible Automation Platform.\n\nHost:         {{ remediated_host | default('unknown') }}\nDrift key:    {{ drift_key | default('manual') }}\nTriggered by: auid {{ triggering_user | default('unknown') }}\nSplunk SID:   {{ splunk_sid | default('n/a') }}\n\nRemediation is in progress. This incident will be auto-resolved on completion."
+            description: "Configuration drift detected — auto-remediation initiated by Ansible Automation Platform.\n\nHost:         {{ remediated_host | default('unknown') }}\nFile changed: {{ changed_file | default('unknown') }}\nDrift key:    {{ drift_key | default('manual') }}\nTriggered by: auid {{ triggering_user | default('unknown') }}\nSplunk SID:   {{ splunk_sid | default('n/a') }}\n\nRemediation is in progress. This incident will be auto-resolved on completion."
             impact: low
             urgency: low
           register: snow_result

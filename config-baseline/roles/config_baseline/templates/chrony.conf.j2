@@ -1,0 +1,20 @@
+# Managed by AAP — drift is remediated automatically.
+# Rendered {{ ansible_date_time.iso8601 }} on {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+{% for server in desired_ntp_servers %}
+{% if loop.first %}
+server {{ server }} iburst prefer
+{% else %}
+server {{ server }} iburst
+{% endif %}
+{% endfor %}
+
+driftfile /var/lib/chrony/drift
+makestep {{ chrony_settings.makestep }}
+{% if chrony_settings.rtcsync | default(true) %}
+rtcsync
+{% endif %}
+logdir {{ chrony_settings.logdir | default('/var/log/chrony') }}
+
+keyfile /etc/chrony.keys
+leapsectz right/UTC

@@ -21,26 +21,3 @@
     loop_var: managed_file
     label: "{{ managed_file.name }}"
 
-- name: Report remediation outcome to Splunk HEC
-  ansible.builtin.uri:
-    url: "{{ splunk_hec_url }}"
-    method: POST
-    headers:
-      Authorization: "Splunk {{ splunk_hec_token }}"
-    body_format: json
-    body:
-      sourcetype: "ansible:remediation"
-      event:
-        host: "{{ inventory_hostname }}"
-        drift_key: "{{ drift_key | default('manual') }}"
-        triggered_by: "{{ triggering_user | default('manual') }}"
-        splunk_sid: "{{ splunk_sid | default('') }}"
-        aap_job_id: "{{ awx_job_id | default('local') }}"
-        action: "{{ drift_action | default('remediate') }}"
-        result: success
-        files_enforced: "{{ managed_files | map(attribute='name') | list }}"
-    validate_certs: true
-  run_once: true
-  no_log: true
-  ignore_errors: true
-  when: splunk_hec_url is defined

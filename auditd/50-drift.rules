@@ -5,11 +5,12 @@
 # catches every change.  The auditd "name" field carries the actual file
 # path, which EDA uses to route to the right remediation workflow.
 
--w /etc/ssh/sshd_config   -p wa -k config_drift
--w /etc/ssh/sshd_config.d -p wa -k config_drift
+-w /etc/ssh/ -p wa -k config_drift
 
 -w /etc/sudoers   -p wa -k config_drift
 -w /etc/sudoers.d -p wa -k config_drift
+
+-w /etc/chrony.conf -p wa -k config_drift
 
 -w /etc/pam.d/ -p wa -k config_drift
 

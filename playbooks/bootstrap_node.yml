@@ -6,8 +6,9 @@
 
   vars:
     splunk_uf_rpm: "{{ lookup('env', 'SPLUNK_UF_RPM') | default('', true) }}"
-    splunk_cloud_creds: "{{ lookup('env', 'SPLUNK_CLOUD_CREDS_PACKAGE') | default('', true) }}"
     splunk_admin_password: "{{ lookup('env', 'SPLUNK_UF_ADMIN_PASSWORD') | default('Splunk4ward!', true) }}"
+    splunk_indexer_host: "{{ lookup('env', 'SPLUNK_INDEXER_HOST') | default('', true) }}"
+    splunk_indexer_port: "{{ lookup('env', 'SPLUNK_INDEXER_PORT') | default('9997', true) }}"
     auditd_log_format: ENRICHED
 
   tasks:
@@ -105,34 +106,18 @@
       when: uf_binary.stat.exists or splunk_uf_rpm | length > 0
       notify: Restart Splunk UF
 
-    # ── Splunk Cloud credentials package ──────────────────────────────
-    - name: Install Splunk Cloud credentials package
+    # ── Splunk Enterprise forwarding (outputs.conf) ─────────────────
+    - name: Deploy UF outputs.conf for Splunk Enterprise indexer
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../splunk/outputs.conf.j2"
+        dest: /opt/splunkforwarder/etc/system/local/outputs.conf
+        owner: splunkfwd
+        group: splunkfwd
+        mode: '0600'
       when:
-        - splunk_cloud_creds | length > 0
+        - splunk_indexer_host | length > 0
         - uf_binary.stat.exists or splunk_uf_rpm | length > 0
-      block:
-        - name: Copy credentials package to node
-          ansible.builtin.copy:
-            src: "{{ playbook_dir }}/../{{ splunk_cloud_creds }}"
-            dest: /tmp/splunkclouduf.spl
-            mode: '0600'
-
-        - name: Install credentials package
-          ansible.builtin.command:
-            cmd: >
-              /opt/splunkforwarder/bin/splunk install app /tmp/splunkclouduf.spl
-              -auth admin:{{ splunk_admin_password }}
-          register: creds_result
-          changed_when: "'already installed' not in creds_result.stdout"
-          failed_when:
-            - creds_result.rc != 0
-            - "'already installed' not in creds_result.stdout"
-          notify: Restart Splunk UF
-
-        - name: Clean up credentials package
-          ansible.builtin.file:
-            path: /tmp/splunkclouduf.spl
-            state: absent
+      notify: Restart Splunk UF
 
   handlers:
     - name: Restart auditd
